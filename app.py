@@ -1,8 +1,8 @@
 import streamlit as st
 import random
 
-# --- 厳選された2次ねじれを持つ曲線のリスト (ランク0, 1, 2) ---
-# 形式: [Label, Equation, Rank]
+# --- 2次ねじれを持つ曲線の厳選リスト ---
+# [Label, Equation, Rank]
 CURVE_LIST = [
     ["32.a3", "y^2 = x^3 - x", 0],
     ["64.a4", "y^2 = x^3 + x", 0],
@@ -52,12 +52,17 @@ if st.button("回答をチェック"):
     st.session_state.answered = True
 
 if st.session_state.answered:
-    if user_choice == curve[2]: # 修正: user_rank を参照
+    # 修正箇所: user_rank と curve[2] を正しく比較
+    if user_rank == curve[2]:
         st.success(f"正解！ ランクは **{curve[2]}** です。")
         st.balloons()
     else:
         st.error(f"残念！ 正解は **{curve[2]}** でした。")
     
-    # リンク先も動的に生成
+    # LMFDBへのリンク
     url_label = curve[0].replace('.', '/')
-    st.markdown(f"[LMFDBで詳細を確認](https://www.lmfdb.org/EllipticCurve/Q/{url_label})")
+    st.markdown(f"### [LMFDBで詳細を確認](https://www.lmfdb.org/EllipticCurve/Q/{url_label})")
+    
+    st.write("---")
+    st.write("💡 **2-descentのヒント:**")
+    st.write("この曲線の 2-torsion が $(0,0)$ にあると仮定して、双対曲線の係数 $\\bar{b} = a^2 - 4b$ を計算してみましょう。")
