@@ -1,57 +1,67 @@
 import streamlit as st
+import requests
 import random
 
-# データセットにLMFDBの詳細情報を追加
-curves = {
-    "32.a3": {"eq": "y^2 = x^3 - x", "rank": 0, "url": "https://www.lmfdb.org/EllipticCurve/Q/32/a/3"},
-    "64.a4": {"eq": "y^2 = x^3 + x", "rank": 0, "url": "https://www.lmfdb.org/EllipticCurve/Q/64/a/4"},
-    "80.a3": {"eq": "y^2 = x^3 - 5x", "rank": 1, "url": "https://www.lmfdb.org/EllipticCurve/Q/80/a/3"},
-    "288.d2": {"eq": "y^2 = x^3 - 17x", "rank": 2, "url": "https://www.lmfdb.org/EllipticCurve/Q/288/d/2"},
-}
+# --- LMFDBから条件に合う曲線をランダムに取得する関数 ---
+def get_random_curve():
+    # 検索条件: 
+    # rank: 0, 1, 2
+    # torsion_structure: [2] または [2, 2] (2次ねじれを持つもの)
+    # conductor: 1000以下 (計算が重くなりすぎないように)
+    # random=true: ランダムに1件取得
+    url = "https://www.lmfdb.org/api/ec_curves/?rank=0,1,2&torsion_structure=[2]&conductor=1-1000&_format=json&_sample=1"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data['data']:
+                item = data['data'][0]
+                return {
+                    "label": item['label'],
+                    "eq": item['equation'],
+                    "rank": item['rank'],
+                    "url": f"https://www.lmfdb.org/EllipticCurve/Q/{item['label'].replace('.','/')}"
+                }
+    except Exception as e:
+        st.error(f"APIエラー: {e}")
+    return None
 
-st.set_page_config(page_title="2-Descent Trainer", layout="centered")
+st.set_page_config(page_title="2-Descent Random Challenge", page_icon="🎲")
 
-st.title("📈 2-Descent Training App")
+st.title("🎲 2-Descent Random Challenge")
+st.write("LMFDBからランク2以下の曲線をランダムに取得します。")
 
-if 'label' not in st.session_state:
-    st.session_state.label = random.choice(list(curves.keys()))
+# セッション状態で問題を管理
+if 'current_curve' not in st.session_state:
+    st.session_state.current_curve = None
     st.session_state.answered = False
 
-label = st.session_state.label
-data = curves[label]
-
-# メイン表示
-st.markdown(f"### Target Curve: `{label}`")
-st.latex(data['eq'])
-
-# ユーザー回答
-st.write("この曲線のランク $r$ を予測してください。")
-cols = st.columns(3)
-choices = [0, 1, 2]
-user_choice = st.radio("選択してください:", choices, horizontal=True, label_visibility="collapsed")
-
-if st.button("Check Answer", use_container_width=True):
-    st.session_state.answered = True
-
-if st.session_state.answered:
-    if user_choice == data['rank']:
-        st.success(f"正解！ ランクは {data['rank']} です。")
-        st.balloons()
-    else:
-        st.error(f"残念。 正解は {data['rank']} でした。")
-    
-    # LMFDBへのリンク
-    st.markdown(f"[LMFDBで詳細を確認する]({data['url']})")
-    
-    if st.button("Next Curve"):
-        st.session_state.label = random.choice(list(curves.keys()))
+# 「新しい問題を出す」ボタン
+if st.button("新しい問題を生成") or st.session_state.current_curve is None:
+    with st.spinner("LMFDBから抽出中..."):
+        st.session_state.current_curve = get_random_curve()
         st.session_state.answered = False
-        st.rerun()
 
-st.sidebar.header("Help & Theory")
-st.sidebar.markdown("""
-2-降下法の手順:
-1. $E$ の有理2次ねじれ点を $(0,0)$ へ移動
-2. 双対曲線 $\\bar{E}$ を構成
-3. $\\text{Im}(\\delta)$ と $\\text{Im}(\\bar{\\delta})$ のサイズを判定
-""")
+if st.session_state.current_curve:
+    curve = st.session_state.current_curve
+    
+    st.info(f"**Cremona Label: {curve['label']}**")
+    st.latex(curve['eq'])
+    
+    st.divider()
+    
+    # 回答エリア
+    user_rank = st.radio("この曲線のランク $r$ は？", [0, 1, 2], horizontal=True)
+    
+    if st.button("回答をチェック"):
+        st.session_state.answered = True
+        
+    if st.session_state.answered:
+        if user_rank == curve['rank']:
+            st.success(f"正解！ ランクは **{curve['rank']}** です。")
+            st.balloons()
+        else:
+            st.error(f"残念！ 正解は **{curve['rank']}** でした。")
+        
+        st.markdown(f"[LMFDBで詳細な計算結果を見る]({curve['url']})")
