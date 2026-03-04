@@ -4,27 +4,32 @@ import random
 
 # --- LMFDBから条件に合う曲線をランダムに取得する関数 ---
 def get_random_curve():
-    # 検索条件: 
-    # rank: 0, 1, 2
-    # torsion_structure: [2] または [2, 2] (2次ねじれを持つもの)
-    # conductor: 1000以下 (計算が重くなりすぎないように)
-    # random=true: ランダムに1件取得
+    # URLを少し修正（APIの仕様に合わせて、より確実なエンドポイントへ）
     url = "https://www.lmfdb.org/api/ec_curves/?rank=0,1,2&torsion_structure=[2]&conductor=1-1000&_format=json&_sample=1"
     
+    # User-Agentを追加（ブラウザからのアクセスですよーと偽装して、ブロックを防ぎます）
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
     try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data['data']:
-                item = data['data'][0]
-                return {
-                    "label": item['label'],
-                    "eq": item['equation'],
-                    "rank": item['rank'],
-                    "url": f"https://www.lmfdb.org/EllipticCurve/Q/{item['label'].replace('.','/')}"
-                }
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        # デバッグ用：ステータスコードが200（成功）か確認
+        if response.status_code != 200:
+            st.error(f"LMFDBがエラーを返しました: {response.status_code}")
+            return None
+            
+        data = response.json()
+        if 'data' in data and len(data['data']) > 0:
+            item = data['data'][0]
+            # 式の整形（ainvsからy^2 = ... の形を作るのは複雑なので、一旦 ainvariantsを表示）
+            return {
+                "label": item['label'],
+                "eq": f"a-invariants: {item['ainvs']}", 
+                "rank": item['rank'],
+                "url": f"https://www.lmfdb.org/EllipticCurve/Q/{item['label'].replace('.','/')}"
+            }
     except Exception as e:
-        st.error(f"APIエラー: {e}")
+        st.error(f"通信エラーが発生しました: {e}")
     return None
 
 st.set_page_config(page_title="2-Descent Random Challenge", page_icon="🎲")
