@@ -1,25 +1,16 @@
 import streamlit as st
 import random
+import json
+import os
 
-# --- 1. 正確なデータセット (LMFDB対応版・定数項0) ---
-curves = {
-    # "Label": [a, b, rank, "Equation String"]
-    "32.a3": [0, -1, 0, "y^2 = x^3 - x"],
-    "64.a4": [0, 1, 0, "y^2 = x^3 + x"],
-    "80.a3": [0, -5, 1, "y^2 = x^3 - 5x"],
-    "96.b3": [0, -4, 0, "y^2 = x^3 - 4x"],
-    "120.a2": [1, -6, 1, "y^2 = x^3 + x^2 - 6x"],
-    "128.a1": [0, 2, 0, "y^2 = x^3 + 2x"],
-    "144.a2": [0, -9, 0, "y^2 = x^3 - 9x"],
-    "192.a3": [0, 3, 0, "y^2 = x^3 + 3x"],
-    "242.b3": [11, 22, 0, "y^2 = x^3 + 11x^2 + 22x"],
-    "288.d2": [0, -17, 2, "y^2 = x^3 - 17x"],
-    "400.d3": [0, -25, 1, "y^2 = x^3 - 25x"],
-    "512.i2": [0, -8, 1, "y^2 = x^3 - 8x"],
-    "576.c5": [0, 36, 0, "y^2 = x^3 + 36x"],
-    "720.j3": [0, -45, 1, "y^2 = x^3 - 45x"],
-    "960.d1": [-1, -6, 1, "y^2 = x^3 - x^2 - x"],
-}
+# --- 1. 外部JSONファイルからデータを読み込む ---
+def load_data():
+    # app.pyと同じ階層にあるcurves.jsonを探す
+    json_path = os.path.join(os.path.dirname(__file__), "curves.json")
+    with open(json_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+curves = load_data()
 
 # --- 2. 補助関数 (素因数分解と悪い素数の抽出) ---
 def get_prime_divisors(n):
@@ -84,7 +75,7 @@ if st.session_state.answered:
     else:
         st.error(f"残念！正解は {true_rank} でした。")
     
-    # LMFDBへのリンク（ベタ打ち対応）
+    # LMFDBへのリンク
     lmfdb_url = f"https://www.lmfdb.org/EllipticCurve/Q/{label.replace('.', '/')}"
     st.markdown(f"🔗 [LMFDBで詳細を確認する]({lmfdb_url})")
     
