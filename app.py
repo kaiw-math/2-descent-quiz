@@ -12,11 +12,30 @@ def load_data():
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except json.JSONDecodeError as e:
-        st.error(f"JSONの形式が正しくありません。curves.jsonを確認してください。\nエラー内容: {e}")
+    except Exception as e:
+        st.error(f"JSON読み込みエラー: {e}")
         st.stop()
 
-curves = load_data()
+# --- 数式を美しく整形する関数 ---
+def format_equation(a, b):
+    # y^2 = x^3 からスタート
+    eq = "y^2 = x^3"
+    
+    # x^2 の項 (a)
+    if a != 0:
+        sign = "+" if a > 0 else "-"
+        val = abs(a)
+        coeff = "" if val == 1 else val
+        eq += f" {sign} {coeff}x^2"
+    
+    # x の項 (b)
+    if b != 0:
+        sign = "+" if b > 0 else "-"
+        val = abs(b)
+        coeff = "" if val == 1 else val
+        eq += f" {sign} {coeff}x"
+        
+    return eq
 
 # --- 数論的な補助関数 ---
 def get_prime_divisors(n):
@@ -38,7 +57,9 @@ def get_bad_primes(a, b):
     primes.update(get_prime_divisors(a**2 - 4*b))
     return sorted(list(primes))
 
-# --- アプリの表示 ---
+# --- アプリ起動 ---
+curves = load_data()
+
 st.set_page_config(page_title="2-Descent Trainer", layout="wide")
 st.title("🛡️ Elliptic Curve 2-Descent Trainer")
 
@@ -47,15 +68,19 @@ if 'current_label' not in st.session_state:
     st.session_state.answered = False
 
 label = st.session_state.current_label
-a, b, true_rank, eq_text = curves[label]
+# a, b, rank の3つだけを取り出す
+a, b, true_rank = curves[label]
+
+# 数式を整形
+pretty_eq = format_equation(a, b)
 
 col1, col2 = st.columns([3, 1])
 with col1:
     st.subheader(f"Target Curve: {label}")
-    st.latex(eq_text)
+    st.latex(pretty_eq) # ここで整形された数式を表示
 
 with col2:
-    st.markdown("##### 🔍 悪い素数 (調査対象)")
+    st.markdown("##### 🔍 悪い素数 (要調査)")
     bad_primes = get_bad_primes(a, b)
     primes_str = " ".join([f"`p={p}`" for p in bad_primes] + ["`p=∞`"])
     st.write(primes_str)
@@ -74,6 +99,7 @@ if st.session_state.answered:
     else:
         st.error(f"残念！正解は {true_rank} でした。")
     
+    # LMFDBリンクの生成
     lmfdb_url = f"https://www.lmfdb.org/EllipticCurve/Q/{label.replace('a', '/a/').replace('b', '/b/').replace('c', '/c/').replace('d', '/d/').replace('t', '/t/').replace('v', '/v/').replace('o', '/o/').replace('h', '/h/').replace('i', '/i/').replace('f', '/f/')}"
     st.markdown(f"🔗 [LMFDBで詳細を確認する]({lmfdb_url})")
     
