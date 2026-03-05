@@ -100,7 +100,12 @@ if st.session_state.answered:
         st.error(f"残念！正解は {true_rank} でした。")
     
     # LMFDBリンクの生成
-    lmfdb_url = f"https://www.lmfdb.org/EllipticCurve/Q/{label.replace('a', '/a/').replace('b', '/b/').replace('c', '/c/').replace('d', '/d/').replace('t', '/t/').replace('v', '/v/').replace('o', '/o/').replace('h', '/h/').replace('i', '/i/').replace('f', '/f/')}"
+    # ドットを消してから、数字とアルファベットの境界にスラッシュを入れる処理
+    clean_label = label.replace('.', '')
+    # 最初のアルファベットが見つかる場所にスラッシュを挿入する
+    import re
+    formatted_label = re.sub(r'([0-9]+)([a-z]+)', r'\1/\2/', clean_label)
+    lmfdb_url = f"https://www.lmfdb.org/EllipticCurve/Q/{formatted_label}"
     st.markdown(f"🔗 [LMFDBで詳細を確認する]({lmfdb_url})")
     
     if st.button("次の問題へ"):
