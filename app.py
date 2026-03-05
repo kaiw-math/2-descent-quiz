@@ -1,68 +1,85 @@
 import streamlit as st
 import random
 
-# --- 2次ねじれを持つ曲線の厳選リスト ---
-# [Label, Equation, Rank]
-CURVE_LIST = [
-    ["32.a3", "y^2 = x^3 - x", 0],
-    ["64.a4", "y^2 = x^3 + x", 0],
-    ["80.a3", "y^2 = x^3 - 5x", 1],
-    ["288.d2", "y^2 = x^3 - 17x", 2],
-    ["120.a2", "y^2 = x^3 + x^2 - 6x", 1],
-    ["96.a1", "y^2 = x^3 + x^2 - 2x", 1],
-    ["225.e1", "y^2 = x^3 - 25x", 0],
-    ["100.a1", "y^2 = x^3 + x^2 - x", 0],
-    ["196.a1", "y^2 = x^3 - 7x^2", 0],
-    ["338.b1", "y^2 = x^3 + x^2 - 10x - 12", 1],
-    ["400.c1", "y^2 = x^3 - x^2 - 4x + 4", 0],
-    ["576.h1", "y^2 = x^3 - 6x^2 + 9x", 0],
-    ["700.i1", "y^2 = x^3 + x^2 - 16x - 20", 1],
-    ["841.a1", "y^2 + y = x^3 - x^2 - x", 1],
-    ["900.g1", "y^2 = x^3 - 13x + 12", 1]
-]
+# --- 正確なデータセット (LMFDB対応版) ---
+curves = {
+    # "Label": [a, b, rank, "Equation String"]
+    "32.a3": [0, -1, 0, "y^2 = x^3 - x"],
+    "64.a4": [0, 1, 0, "y^2 = x^3 + x"],
+    "80.a3": [0, -5, 1, "y^2 = x^3 - 5x"],
+    "96.b3": [0, -4, 0, "y^2 = x^3 - 4x"],
+    "120.a2": [1, -6, 1, "y^2 = x^3 + x^2 - 6x"],
+    "128.a1": [0, 2, 0, "y^2 = x^3 + 2x"],
+    "144.a2": [0, -9, 0, "y^2 = x^3 - 9x"],
+    "192.a3": [0, 3, 0, "y^2 = x^3 + 3x"],
+    "242.b3": [11, 22, 0, "y^2 = x^3 + 11x^2 + 22x"],
+    "288.d2": [0, -17, 2, "y^2 = x^3 - 17x"],
+    "400.d3": [0, -25, 1, "y^2 = x^3 - 25x"],
+    "512.i2": [0, -8, 1, "y^2 = x^3 - 8x"],
+    "576.c5": [0, 36, 0, "y^2 = x^3 + 36x"],
+    "720.j3": [0, -45, 1, "y^2 = x^3 - 45x"],
+    "960.d1": [-1, -6, 1, "y^2 = x^3 - x^2 - x"],
+}
 
-st.set_page_config(page_title="2-Descent Challenge", page_icon="🎲")
+# --- 補助関数 ---
+def get_prime_divisors(n):
+    n = abs(int(n))
+    primes = set()
+    if n == 0: return primes
+    d = 2
+    temp = n
+    while d * d <= temp:
+        while temp % d == 0:
+            primes.add(d); temp //= d
+        d += 1
+    if temp > 1: primes.add(temp)
+    return primes
 
-st.title("🎲 2-Descent Random Challenge")
-st.write("2次ねじれを持つ曲線のランクを推定しましょう。")
+def get_bad_primes(a, b):
+    primes = {2}
+    primes.update(get_prime_divisors(b))
+    primes.update(get_prime_divisors(a**2 - 4*b))
+    return sorted(list(primes))
 
-# セッション状態で問題を管理
-if 'curve' not in st.session_state:
-    st.session_state.curve = random.choice(CURVE_LIST)
+# --- UI設定 ---
+st.set_page_config(page_title="2-Descent Applet", layout="wide")
+st.title("🛡️ Elliptic Curve 2-Descent Trainer")
+
+if 'current_label' not in st.session_state:
+    st.session_state.current_label = random.choice(list(curves.keys()))
     st.session_state.answered = False
 
-# 新しい問題ボタン
-if st.button("新しい問題を生成"):
-    st.session_state.curve = random.choice(CURVE_LIST)
-    st.session_state.answered = False
-    st.rerun()
+label = st.session_state.current_label
+# ここでリストから4つの要素を順番に取り出しています
+a, b, true_rank, eq_text = curves[label]
 
-curve = st.session_state.curve
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.subheader(f"Target: {label}")
+    # 方程式はデータに入れた正確な文字列をそのまま表示
+    st.latex(eq_text)
 
-# 表示
-st.info(f"**Cremona Label: {curve[0]}**")
-st.latex(curve[1])
+with col2:
+    st.markdown("##### 🔍 悪い素数 (調査対象)")
+    bad_primes = get_bad_primes(a, b)
+    primes_str = " ".join([f"`p={p}`" for p in bad_primes] + ["`p=∞`"])
+    st.write(primes_str)
 
 st.divider()
 
-# 回答
-user_rank = st.radio("この曲線のランク $r$ は？", [0, 1, 2], horizontal=True)
+user_rank = st.radio("推定ランクを選んでください:", [0, 1, 2], horizontal=True)
 
-if st.button("回答をチェック"):
+if st.button("回答チェック！"):
     st.session_state.answered = True
 
 if st.session_state.answered:
-    # 修正箇所: user_rank と curve[2] を正しく比較
-    if user_rank == curve[2]:
-        st.success(f"正解！ ランクは **{curve[2]}** です。")
+    if user_rank == true_rank:
+        st.success(f"正解！ランクは {true_rank} です。素晴らしい洞察力！")
         st.balloons()
     else:
-        st.error(f"残念！ 正解は **{curve[2]}** でした。")
+        st.error(f"惜しい！正解は {true_rank} でした。")
     
-    # LMFDBへのリンク
-    url_label = curve[0].replace('.', '/')
-    st.markdown(f"### [LMFDBで詳細を確認](https://www.lmfdb.org/EllipticCurve/Q/{url_label})")
-    
-    st.write("---")
-    st.write("💡 **2-descentのヒント:**")
-    st.write("この曲線の 2-torsion が $(0,0)$ にあると仮定して、双対曲線の係数 $\\bar{b} = a^2 - 4b$ を計算してみましょう。")
+    if st.button("次の曲線に挑む"):
+        st.session_state.current_label = random.choice(list(curves.keys()))
+        st.session_state.answered = False
+        st.rerun()
